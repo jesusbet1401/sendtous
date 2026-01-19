@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String?
+  role      Role       @default(USER)
+  password  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  shipments Shipment[]
+}
+
+model Supplier {
+  id           String     @id @default(cuid())
+  name         String
+  country      String
+  currency     Currency   @default(USD)
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  address      String?
+  notes        String?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  products     Product[]
+  shipments    Shipment[]
+}
+
+model Product {
+  id            String         @id @default(cuid())
+  sku           String         @unique
+  name          String
+  supplierId    String
+  priceFob      Float?
+  currency      Currency?
+  hsCode        String?
+  weight        Float?
+  volume        Float?
+  category      String?
+  imageUrl      String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  description   String?
+  supplier      Supplier       @relation(fields: [supplierId], references: [id])
+  shipmentItems ShipmentItem[]
+}
+
+model Shipment {
+  id              String          @id @default(cuid())
+  reference       String          @unique
+  supplierId      String
+  transportMethod TransportMethod
+  blOrAwb         String?
+  carrier         String?
+  origin          String?
+  destination     String?
+  etd             DateTime?
+  eta             DateTime?
+  ata             DateTime?
+  customsAgent    String?
+  hasOriginCert   Boolean         @default(false)
+  status          ShipmentStatus  @default(DRAFT)
+  exchangeRateUsd Float?
+  exchangeRateEur Float?
+  exchangeRateGbp Float?
+  createdById     String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  costLines       CostLine[]
+  createdBy       User            @relation(fields: [createdById], references: [id])
+  supplier        Supplier        @relation(fields: [supplierId], references: [id])
+  items           ShipmentItem[]
+}
+
+model ShipmentItem {
+  id           String   @id @default(cuid())
+  shipmentId   String
+  productId    String
+  quantity     Int
+  unitPriceFob Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  product      Product  @relation(fields: [productId], references: [id])
+  shipment     Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+}
+
+model CostLine {
+  id          String   @id @default(cuid())
+  shipmentId  String
+  description String
+  amount      Float
+  currency    Currency @default(USD)
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  ADMIN
+  USER
+  VIEWER
+}
+
+enum Currency {
+  CLP
+  USD
+  EUR
+  GBP
+}
+
+enum TransportMethod {
+  MARITIME
+  AIR
+}
+
+enum ShipmentStatus {
+  DRAFT
+  IN_TRANSIT
+  IN_CUSTOMS
+  RELEASED
+  DELIVERED
+}
