@@ -13,7 +13,6 @@ export const authConfig = {
                 session.user.id = token.sub;
             }
             if (token.role && session.user) {
-                // @ts-ignore
                 session.user.role = token.role;
             }
             return session;

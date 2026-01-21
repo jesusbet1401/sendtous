@@ -42,3 +42,7 @@ next-env.d.ts
 
 /src/generated/prisma
 dev.db
+next-build.zip
+next-build.zip.*
+zip_log.txt
+/build_temp
