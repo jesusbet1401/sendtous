@@ -48,6 +48,8 @@ export async function createSupplier(data: SupplierFormData) {
             },
         });
         revalidatePath('/suppliers');
+        revalidatePath('/shipments/new');
+        revalidatePath('/products/new');
         return { success: true, data: supplier };
     } catch (error) {
         console.error('Create Supplier Error:', error);
@@ -62,6 +64,8 @@ export async function updateSupplier(id: string, data: Partial<SupplierFormData>
             data,
         });
         revalidatePath('/suppliers');
+        revalidatePath('/shipments/new');
+        revalidatePath('/products/new');
         return { success: true, data: supplier };
     } catch (error) {
         return { success: false, error: 'Failed to update supplier' };
@@ -82,6 +86,8 @@ export async function deleteSupplier(id: string) {
             where: { id }
         });
         revalidatePath('/suppliers');
+        revalidatePath('/shipments/new');
+        revalidatePath('/products/new');
         return { success: true };
     } catch (error) {
         return { success: false, error: 'Failed to delete supplier' };
