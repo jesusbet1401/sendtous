@@ -25,92 +25,123 @@ export default async function ShipmentDetailsPage({ params }: { params: Promise<
         notFound();
     }
 
+    // Paranoid defaults to prevent crash
+    const safeItems = Array.isArray(shipment.items) ? shipment.items : [];
+    const safeCostLines = Array.isArray(shipment.costLines) ? shipment.costLines : [];
+    const safeSupplier = shipment.supplier || { currency: 'USD', name: 'Unknown' };
+    const safeStatus = shipment.status || 'DRAFT';
+
     // Fetch products for this supplier to populate the dropdown
     const productsResult = await getProductsBySupplier(shipment.supplierId);
-    const availableProducts = productsResult.success ? productsResult.data : [];
+    const availableProducts = (productsResult?.success && Array.isArray(productsResult.data)) ? productsResult.data : [];
+
+    console.log('DEBUG: Shipment Data:', {
+        id: shipment.id,
+        itemsLen: shipment.items?.length,
+        costLinesLen: shipment.costLines?.length,
+        prodLen: availableProducts?.length
+    });
 
     const exchangeRates = {
         usd: shipment.exchangeRateUsd || 0,
         eur: shipment.exchangeRateEur || 0,
-        gbp: shipment.exchangeRateGbp || 0
+        gbp: shipment.exchangeRateGbp || 0,
+        // Legacy -> New Mappings
+        customsUsd: shipment.exchangeRateUsd || 0,
+        customsEur: shipment.exchangeRateEur || 0,
+        customsGbp: shipment.exchangeRateGbp || 0,
+        purchaseUsd: shipment.purchaseRateUsd || 0,
+        purchaseEur: shipment.purchaseRateEur || 0,
+        purchaseGbp: shipment.purchaseRateGbp || 0,
+        crossEurToUsd: shipment.exchangeRateEurToUsd || 0,
+        crossGbpToUsd: shipment.exchangeRateGbpToUsd || 0,
+
     };
 
     return (
         <div className="space-y-6 pb-20">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/shipments" className="no-print">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                    </Link>
+            {/* Header / Actions - Top Section */}
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 mb-1">
                             <h1 className="text-2xl font-bold text-slate-900">{shipment.reference}</h1>
                             <ShipmentStatusEditor
                                 shipmentId={shipment.id}
-                                currentStatus={shipment.status as any}
+                                currentStatus={safeStatus as any}
                             />
                         </div>
-                        <p className="text-sm text-slate-500 mt-0.5">
-                            Proveedor: <span className="font-medium text-slate-700">{shipment.supplier.name}</span>
-                        </p>
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                            <span className="font-medium text-slate-700">{safeSupplier.name}</span>
+                            <span>•</span>
+                            <span className="font-mono text-xs">{shipment.id}</span>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <ExportButtons shipment={{ ...shipment, items: safeItems, costLines: safeCostLines, supplier: safeSupplier }} />
+                        <Link href="/shipments">
+                            <Button variant="outline">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Volver
+                            </Button>
+                        </Link>
                     </div>
                 </div>
-                <div className="no-print">
-                    <ExportButtons shipment={shipment} />
-                </div>
+
+                {/* KPIs / Summary Cards */}
+                <ShipmentKPIs
+                    shipmentId={shipment.id}
+                    items={safeItems}
+                    costLines={safeCostLines}
+                    exchangeRates={exchangeRates}
+                    currency={safeSupplier.currency || 'USD'}
+                    hasOriginCert={shipment.hasOriginCert}
+                />
             </div>
 
-            {/* KPIs Row */}
-            <ShipmentKPIs
-                shipmentId={shipment.id}
-                items={shipment.items}
-                costLines={shipment.costLines || []}
-                exchangeRates={exchangeRates}
-                currency={shipment.supplier.currency}
-                hasOriginCert={shipment.hasOriginCert}
-            />
+            <Separator />
 
-            {/* Main Content Grid - Calculator Style */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                {/* Left Column: Parameters & Costs (5 cols) */}
-                <div className="lg:col-span-5 space-y-6">
-
-                    {/* Exchange Rates - Like "Parámetros Globales" */}
-                    <ExchangeRateForm shipment={shipment} />
-
-                    {/* Logistics Details */}
-                    <LogisticsEditor shipment={shipment} />
-
-                    {/* Cost Lines */}
-                    <CostLinesManager shipmentId={shipment.id} costs={shipment.costLines || []} />
-                </div>
-
-                {/* Right Column: Products Table (7 cols) */}
-                <div className="lg:col-span-7">
-                    <Card className="h-full min-h-[500px]">
-                        <CardHeader className="flex flex-row items-center justify-between pb-3">
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column: Items Table (Wide) */}
+                <div className="lg:col-span-2 space-y-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <div>
-                                <CardTitle className="text-base">Productos</CardTitle>
-                                <CardDescription>Detalle de la mercancía con costos calculados.</CardDescription>
+                                <CardTitle className="text-lg">Items del Embarque</CardTitle>
+                                <CardDescription>Productos incluidos y sus costos calculados</CardDescription>
                             </div>
-                            <div className="flex gap-2">
-                                <CsvUploadDialog shipmentId={shipment.id} />
-                                <AddItemDialog shipmentId={shipment.id} products={availableProducts as any[]} />
-                            </div>
+                            <AddItemDialog shipmentId={shipment.id} products={availableProducts as any[]} />
                         </CardHeader>
                         <CardContent className="p-0">
                             <ShipmentItemsTable
-                                items={shipment.items}
+                                items={safeItems}
                                 shipmentId={shipment.id}
-                                currency={shipment.supplier.currency}
-                                costLines={shipment.costLines}
+                                currency={safeSupplier.currency || 'USD'}
+                                costLines={safeCostLines}
                                 exchangeRates={exchangeRates}
                                 hasCertificateOfOrigin={shipment.hasOriginCert}
                             />
+                        </CardContent>
+                    </Card>
+
+                    {/* Calculated Costs Detail */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <CostLinesManager shipmentId={shipment.id} costs={safeCostLines} />
+                        <LogisticsEditor shipment={shipment} />
+                    </div>
+                </div>
+
+                {/* Right Column: Configuration & Inputs */}
+                <div className="space-y-6">
+                    <ExchangeRateForm shipment={shipment} />
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-sm">Subir CSV</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <CsvUploadDialog shipmentId={shipment.id} />
                         </CardContent>
                     </Card>
                 </div>

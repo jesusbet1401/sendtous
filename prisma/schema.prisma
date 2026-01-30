@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -33,6 +34,9 @@ model Supplier {
   updatedAt    DateTime   @updatedAt
   products     Product[]
   shipments    Shipment[]
+
+  @@index([name])
+  @@index([country])
 }
 
 model Product {
@@ -51,8 +55,13 @@ model Product {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   description   String?
+  lastLandedCostClp Float? // Last calculated landed cost in CLP
   supplier      Supplier       @relation(fields: [supplierId], references: [id])
   shipmentItems ShipmentItem[]
+
+  @@index([supplierId])
+  @@index([name])
+  @@index([category])
 }
 
 model Shipment {
@@ -69,10 +78,23 @@ model Shipment {
   ata             DateTime?
   customsAgent    String?
   hasOriginCert   Boolean         @default(false)
-  status          ShipmentStatus  @default(DRAFT)
+  status          ShipmentStatus  // Exchange Rates (Customs/Official)
   exchangeRateUsd Float?
   exchangeRateEur Float?
   exchangeRateGbp Float?
+
+  // Exchange Rates (Purchase/Bank Cost)
+  purchaseRateUsd Float?
+  purchaseRateEur Float?
+  purchaseRateGbp Float?
+
+  // Cross Rates (For Customs Calculation)
+  exchangeRateEurToUsd Float? // Fixed cross rate EUR -> USD
+  exchangeRateGbpToUsd Float? // Fixed cross rate GBP -> USD
+  
+  // Tax Base Override
+
+
   createdById     String
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -80,6 +102,11 @@ model Shipment {
   createdBy       User            @relation(fields: [createdById], references: [id])
   supplier        Supplier        @relation(fields: [supplierId], references: [id])
   items           ShipmentItem[]
+
+  @@index([supplierId])
+  @@index([createdById])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model ShipmentItem {
@@ -88,10 +115,14 @@ model ShipmentItem {
   productId    String
   quantity     Int
   unitPriceFob Float
+  unitCostClp  Float?   // Calculated landed cost in CLP
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   product      Product  @relation(fields: [productId], references: [id])
   shipment     Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([productId])
 }
 
 model CostLine {
@@ -104,6 +135,8 @@ model CostLine {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
 }
 
 enum Role {

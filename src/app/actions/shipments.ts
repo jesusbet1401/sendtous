@@ -167,6 +167,11 @@ export async function updateShipmentExchangeRates(shipmentId: string, rates: {
     exchangeRateUsd?: number;
     exchangeRateEur?: number;
     exchangeRateGbp?: number;
+    purchaseRateUsd?: number;
+    purchaseRateEur?: number;
+    purchaseRateGbp?: number;
+    exchangeRateEurToUsd?: number;
+    exchangeRateGbpToUsd?: number;
 }) {
     try {
         const shipment = await prisma.shipment.update({
@@ -175,6 +180,11 @@ export async function updateShipmentExchangeRates(shipmentId: string, rates: {
                 exchangeRateUsd: rates.exchangeRateUsd ? Number(rates.exchangeRateUsd) : undefined,
                 exchangeRateEur: rates.exchangeRateEur ? Number(rates.exchangeRateEur) : undefined,
                 exchangeRateGbp: rates.exchangeRateGbp ? Number(rates.exchangeRateGbp) : undefined,
+                purchaseRateUsd: rates.purchaseRateUsd ? Number(rates.purchaseRateUsd) : undefined,
+                purchaseRateEur: rates.purchaseRateEur ? Number(rates.purchaseRateEur) : undefined,
+                purchaseRateGbp: rates.purchaseRateGbp ? Number(rates.purchaseRateGbp) : undefined,
+                exchangeRateEurToUsd: rates.exchangeRateEurToUsd ? Number(rates.exchangeRateEurToUsd) : undefined,
+                exchangeRateGbpToUsd: rates.exchangeRateGbpToUsd ? Number(rates.exchangeRateGbpToUsd) : undefined,
             }
         });
         revalidatePath(`/shipments/${shipmentId}`);
@@ -350,3 +360,41 @@ export async function importShipmentItems(
     }
 }
 
+export async function saveShipmentCalculatedCosts(shipmentId: string, itemCosts: { itemId: string; unitCostClp: number }[]) {
+    console.log(`[saveShipmentCalculatedCosts] Called for shipment ${shipmentId} with ${itemCosts.length} items.`);
+    try {
+        // Use a transaction to ensure all updates succeed or fail together
+        const result = await prisma.$transaction(async (tx) => {
+            let updatedCount = 0;
+            for (const item of itemCosts) {
+                // 1. Update ShipmentItem with the specific cost for this shipment
+                const updatedItem = await tx.shipmentItem.update({
+                    where: { id: item.itemId },
+                    data: { unitCostClp: item.unitCostClp },
+                    select: { productId: true } // Get product ID to update history
+                });
+
+                // 2. Update Product with the latest known landed cost
+                if (updatedItem.productId) {
+                    await tx.product.update({
+                        where: { id: updatedItem.productId },
+                        data: { lastLandedCostClp: item.unitCostClp }
+                    });
+                    updatedCount++;
+                }
+            }
+            return updatedCount;
+        });
+
+        console.log(`[saveShipmentCalculatedCosts] Successfully updated ${result} products.`);
+        revalidatePath(`/shipments/${shipmentId}`);
+        revalidatePath('/products'); // Update products list so it shows new costs immediately
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error saving calculated costs:', error);
+        return {
+            success: false,
+            error: `Error al guardar: ${error.message || JSON.stringify(error)}`
+        };
+    }
+}

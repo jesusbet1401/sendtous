@@ -77,6 +77,8 @@ export default async function ReportsPage() {
             <ReportsCharts
                 monthlyData={data.monthly}
                 supplierData={data.bySupplier}
+                factorByBrand={data.factorByBrand}
+                brands={data.brands}
             />
 
             {/* Recent Shipments Table */}

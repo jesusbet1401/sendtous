@@ -20,7 +20,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Package, Trash2, Edit, Loader2 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { formatCurrency } from '@/lib/utils';
+import { Search, Package, Trash2, Edit, Loader2, FileSpreadsheet } from 'lucide-react';
 import { Product, Supplier } from '@prisma/client';
 
 type ProductWithSupplier = Product & { supplier: Supplier };
@@ -43,6 +45,32 @@ export function ProductListTable({ initialProducts }: ProductListTableProps) {
         product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.supplier.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // Export to Excel
+    const handleExportExcel = () => {
+        const dataToExport = filteredProducts.map(p => {
+            const priceFob = p.priceFob || 0;
+            // Use stored landed cost if available
+            const estimatedCost = p.lastLandedCostClp || 0;
+
+            return {
+                SKU: p.sku,
+                Nombre: p.name,
+                Proveedor: p.supplier.name,
+                'HS Code': p.hsCode || '',
+                'Precio FOB': priceFob,
+                Moneda: p.currency || 'USD',
+                'Costo Puesto (CLP)': estimatedCost,
+                'Peso (kg)': p.weight || '',
+                'Volumen (m3)': p.volume || ''
+            };
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Productos");
+        XLSX.writeFile(workbook, "Productos_SendToUs.xlsx");
+    };
 
     // Selection handlers
     const handleSelectAll = (checked: boolean) => {
@@ -94,22 +122,34 @@ export function ProductListTable({ initialProducts }: ProductListTableProps) {
                         />
                     </div>
 
-                    {selectedIds.length > 0 && (
-                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-5 duration-200">
-                            <span className="text-sm text-slate-500 mr-2">
-                                {selectedIds.length} seleccionado{selectedIds.length !== 1 ? 's' : ''}
-                            </span>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => setShowDeleteDialog(true)}
-                                className="bg-red-600 hover:bg-red-700 text-white shadow-sm"
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar Selección
-                            </Button>
-                        </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExportExcel}
+                            className="bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                        >
+                            <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                            Exportar Excel
+                        </Button>
+
+                        {selectedIds.length > 0 && (
+                            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-5 duration-200">
+                                <span className="text-sm text-slate-500 mr-2">
+                                    {selectedIds.length} seleccionado{selectedIds.length !== 1 ? 's' : ''}
+                                </span>
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => setShowDeleteDialog(true)}
+                                    className="bg-red-600 hover:bg-red-700 text-white shadow-sm"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar Selección
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -125,7 +165,8 @@ export function ProductListTable({ initialProducts }: ProductListTableProps) {
                             </TableHead>
                             <TableHead>Producto / SKU</TableHead>
                             <TableHead>Proveedor</TableHead>
-                            <TableHead>HS Code</TableHead>
+                            <TableHead className="text-right">FOB</TableHead>
+                            <TableHead className="text-right font-bold text-teal-700 bg-teal-50/30">Costo Puesto (CLP)</TableHead>
                             <TableHead className="text-right">Logística</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
@@ -155,9 +196,14 @@ export function ProductListTable({ initialProducts }: ProductListTableProps) {
                                             {product.supplier.name}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell>
-                                        <span className="text-sm font-mono text-slate-600">
-                                            {product.hsCode || '-'}
+                                    <TableCell className="text-right">
+                                        <span className="text-sm text-slate-500">
+                                            {product.priceFob ? formatCurrency(product.priceFob, product.currency || 'USD') : '-'}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="text-right bg-teal-50/30">
+                                        <span className="text-sm font-bold text-teal-700">
+                                            {product.lastLandedCostClp ? formatCurrency(product.lastLandedCostClp, 'CLP') : '-'}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right text-xs text-slate-500">
@@ -176,7 +222,7 @@ export function ProductListTable({ initialProducts }: ProductListTableProps) {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                                     {products.length === 0 ? "No hay productos registrados." : "No se encontraron productos con tu búsqueda."}
                                 </TableCell>
                             </TableRow>

@@ -16,10 +16,20 @@ export function ExportButtons({ shipment }: ExportButtonsProps) {
             shipment.items,
             shipment.costLines || [],
             {
-                usd: shipment.exchangeRateUsd || 950,
-                eur: shipment.exchangeRateEur || 1020,
-                gbp: shipment.exchangeRateGbp || 1200
-            }
+                usd: shipment.exchangeRateUsd || 0,
+                eur: shipment.exchangeRateEur || 0,
+                gbp: shipment.exchangeRateGbp || 0,
+                customsUsd: shipment.exchangeRateUsd || 0,
+                customsEur: shipment.exchangeRateEur || 0,
+                customsGbp: shipment.exchangeRateGbp || 0,
+                purchaseUsd: shipment.purchaseRateUsd || 0,
+                purchaseEur: shipment.purchaseRateEur || 0,
+                purchaseGbp: shipment.purchaseRateGbp || 0,
+                crossEurToUsd: shipment.exchangeRateEurToUsd || 0,
+                crossGbpToUsd: shipment.exchangeRateGbpToUsd || 0
+            },
+            shipment.hasOriginCert || false,
+            shipment.supplier?.currency || 'USD'
         );
 
         const exportData = {

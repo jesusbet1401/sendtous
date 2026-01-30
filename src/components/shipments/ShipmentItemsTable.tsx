@@ -21,7 +21,12 @@ export function ShipmentItemsTable({
     shipmentId: string,
     currency?: string,
     costLines?: any[],
-    exchangeRates?: { usd: number, eur: number, gbp: number },
+    exchangeRates?: {
+        usd: number; eur: number; gbp: number;
+        customsUsd?: number; customsEur?: number; customsGbp?: number;
+        purchaseUsd?: number; purchaseEur?: number; purchaseGbp?: number;
+        crossEurToUsd?: number; crossGbpToUsd?: number;
+    },
     hasCertificateOfOrigin?: boolean
 }) {
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -36,8 +41,8 @@ export function ShipmentItemsTable({
 
     // Perform calculations on the fly
     const { calculatedItems, summary } = useMemo(() => {
-        return calculateShipmentCosts(items, costLines, exchangeRates, hasCertificateOfOrigin);
-    }, [items, costLines, exchangeRates, hasCertificateOfOrigin]);
+        return calculateShipmentCosts(items, costLines, exchangeRates, hasCertificateOfOrigin, currency as 'USD' | 'EUR' | 'GBP' | 'CLP');
+    }, [items, costLines, exchangeRates, hasCertificateOfOrigin, currency]);
 
     return (
         <div className="rounded-md border">
