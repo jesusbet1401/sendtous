@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { auth } from '@/auth';
 
 // SHIPMENT HEADER ACTIONS
 
@@ -17,6 +18,36 @@ export async function createShipment(data: {
     carrier?: string;
 }) {
     try {
+        const session = await auth();
+        let userId = session?.user?.id;
+        console.log('[createShipment] Session User ID:', userId);
+
+        // Validate that the user ID actually exists in the database
+        if (userId) {
+            const userExists = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { id: true }
+            });
+
+            if (!userExists) {
+                console.warn('[createShipment] User ID from session not found in DB:', userId);
+                // Fallback if session ID is stale/invalid
+                const firstUser = await prisma.user.findFirst();
+                userId = firstUser?.id;
+                console.log('[createShipment] Fallback to valid DB user:', userId);
+            }
+        } else {
+            // Fallback for dev/testing if no session
+            const firstUser = await prisma.user.findFirst();
+            userId = firstUser?.id;
+            console.log('[createShipment] No session, fallback to valid DB user:', userId);
+        }
+
+
+        if (!userId) {
+            return { success: false, error: 'Authentication required to create shipment.' };
+        }
+
         const existing = await prisma.shipment.findUnique({
             where: { reference: data.reference },
         });
@@ -37,15 +68,18 @@ export async function createShipment(data: {
                 blOrAwb: data.blOrAwb,
                 carrier: data.carrier,
                 status: 'DRAFT',
-                createdById: 'cm5v7x9x0000008l3f9x00000', // Placeholder
+                createdById: userId,
             },
         });
 
         revalidatePath('/shipments');
         return { success: true, data: shipment };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating shipment:', error);
-        return { success: false, error: 'Failed to create shipment header.' };
+        console.error('Full Error:', JSON.stringify(error, null, 2));
+        if (error.stack) console.error('Stack:', error.stack);
+
+        return { success: false, error: `Failed to create shipment header: ${error.message}` };
     }
 }
 

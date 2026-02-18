@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,10 +35,24 @@ export function CsvUploadDialog({ shipmentId }: CsvUploadDialogProps) {
     const [isUploading, setIsUploading] = useState(false);
     const [importResult, setImportResult] = useState<{ added: number; errors: string[] } | null>(null);
 
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
+    // Listen for events from ChatWidget
+    useEffect(() => {
+        const handleCustomEvent = (e: CustomEvent<File>) => {
+            const file = e.detail;
+            if (file) {
+                console.log('Received CSV from Chat:', file.name);
+                setOpen(true);
+                processFile(file);
+            }
+        };
 
+        window.addEventListener('TRIGGER_CSV_IMPORT' as any, handleCustomEvent as any);
+        return () => {
+            window.removeEventListener('TRIGGER_CSV_IMPORT' as any, handleCustomEvent as any);
+        };
+    }, []);
+
+    const processFile = (file: File) => {
         // Reset state
         setParsedData([]);
         setImportResult(null);
@@ -96,6 +110,12 @@ export function CsvUploadDialog({ shipmentId }: CsvUploadDialogProps) {
                 setImportResult({ added: 0, errors: ['Error al leer el archivo.'] });
             }
         });
+    };
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        processFile(file);
     };
 
     const handleImport = async () => {

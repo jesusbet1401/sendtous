@@ -3,10 +3,20 @@
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { removeShipmentItem } from '@/app/actions/shipments';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { calculateShipmentCosts } from '@/lib/calculations';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // We need to pass more context to this component now
 export function ShipmentItemsTable({
@@ -29,13 +39,24 @@ export function ShipmentItemsTable({
     },
     hasCertificateOfOrigin?: boolean
 }) {
-    const [isDeleting, setIsDeleting] = useState<string | null>(null);
+    const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    const handleDelete = async (itemId: string) => {
-        if (confirm('¿Estás seguro de eliminar este item?')) {
-            setIsDeleting(itemId);
-            await removeShipmentItem(itemId, shipmentId);
-            setIsDeleting(null);
+    const promptDelete = (itemId: string) => {
+        setItemToDelete(itemId);
+    };
+
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            await removeShipmentItem(itemToDelete, shipmentId);
+        } catch (error) {
+            console.error('Failed to delete item:', error);
+        } finally {
+            setIsDeleting(false);
+            setItemToDelete(null);
         }
     };
 
@@ -88,8 +109,8 @@ export function ShipmentItemsTable({
                                         variant="ghost"
                                         size="icon"
                                         className="text-muted-foreground hover:text-destructive"
-                                        onClick={() => handleDelete(item.id)}
-                                        disabled={isDeleting === item.id}
+                                        onClick={() => promptDelete(item.id)}
+                                        disabled={isDeleting}
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -121,6 +142,41 @@ export function ShipmentItemsTable({
                     </TableFooter>
                 )}
             </Table>
+
+            <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && !isDeleting && setItemToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="h-5 w-5" />
+                            Eliminar Producto
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            ¿Estás seguro de que quieres eliminar este producto del embarque?
+                            Esta acción recalculará los costos de todos los demás items.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                confirmDelete();
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Eliminando...
+                                </>
+                            ) : (
+                                'Eliminar'
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

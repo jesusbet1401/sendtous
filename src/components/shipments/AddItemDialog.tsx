@@ -66,7 +66,7 @@ export function AddItemDialog({ shipmentId, products }: { shipmentId: string, pr
                     Agregar Producto
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[600px]">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle>Agregar Producto al Embarque</DialogTitle>
@@ -74,17 +74,18 @@ export function AddItemDialog({ shipmentId, products }: { shipmentId: string, pr
                             Selecciona un producto del proveedor y define la cantidad.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    <div className="grid gap-6 py-4">
                         <div className="grid gap-2">
                             <Label htmlFor="productId">Producto</Label>
                             <Select name="productId" required onValueChange={handleProductChange}>
-                                <SelectTrigger>
+                                <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Seleccionar producto..." />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {products.map((p) => (
                                         <SelectItem key={p.id} value={p.id}>
-                                            {p.sku} - {p.name}
+                                            <span className="font-mono text-xs mr-2 text-muted-foreground">{p.sku}</span>
+                                            {p.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -97,16 +98,20 @@ export function AddItemDialog({ shipmentId, products }: { shipmentId: string, pr
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="unitPriceFob">Precio Unit. (FOB)</Label>
-                                <Input
-                                    id="unitPriceFob"
-                                    name="unitPriceFob"
-                                    type="number"
-                                    step="0.01"
-                                    required
-                                    placeholder="0.00"
-                                    defaultValue={selectedProduct?.priceFob || ''}
-                                    key={selectedProduct?.id} // Reset when product changes
-                                />
+                                <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">$</span>
+                                    <Input
+                                        id="unitPriceFob"
+                                        name="unitPriceFob"
+                                        type="number"
+                                        step="0.01"
+                                        required
+                                        placeholder="0.00"
+                                        className="pl-6"
+                                        defaultValue={selectedProduct?.priceFob || ''}
+                                        key={selectedProduct?.id} // Reset when product changes
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>

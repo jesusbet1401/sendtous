@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft } from 'lucide-react';
 
+import { ChatContextUpdater } from '@/components/chat/ChatContextUpdater';
 
 export default async function ShipmentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -146,6 +147,8 @@ export default async function ShipmentDetailsPage({ params }: { params: Promise<
                     </Card>
                 </div>
             </div>
+            <ChatContextUpdater data={{ ...shipment, items: safeItems, costLines: safeCostLines }} />
+
         </div>
     );
 }

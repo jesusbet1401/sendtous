@@ -11,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogClose,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
@@ -34,12 +35,14 @@ const AlertDialogCancel = React.forwardRef<
     HTMLButtonElement,
     React.ComponentPropsWithoutRef<typeof Button>
 >(({ className, ...props }, ref) => (
-    <Button
-        ref={ref}
-        variant="outline"
-        className={cn("mt-2 sm:mt-0", className)}
-        {...props}
-    />
+    <DialogClose asChild>
+        <Button
+            ref={ref}
+            variant="outline"
+            className={cn("mt-2 sm:mt-0", className)}
+            {...props}
+        />
+    </DialogClose>
 ))
 AlertDialogCancel.displayName = "AlertDialogCancel"
 

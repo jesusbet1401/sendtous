@@ -6,6 +6,22 @@ export const authConfig = {
     },
     callbacks: {
         authorized({ auth, request: { nextUrl } }) {
+            const isLoggedIn = !!auth?.user;
+            // Only allow public access to login page
+            const isOnLogin = nextUrl.pathname.startsWith('/login');
+
+            if (isOnLogin) {
+                if (isLoggedIn) {
+                    return Response.redirect(new URL('/', nextUrl));
+                }
+                return true;
+            }
+
+            // For all other routes (which are protected by middleware matcher), require login
+            if (!isLoggedIn) {
+                return false; // Redirect to login
+            }
+
             return true;
         },
         async session({ session, token }) {

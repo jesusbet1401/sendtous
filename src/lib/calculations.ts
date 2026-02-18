@@ -180,31 +180,44 @@ export function calculateShipmentCosts(
     // 6. Prorate and Calculate Real Unit Costs (The "Business" Way)
     // Real Cost = Real FOB + Real Freight + Real Insurance + Taxes (Official) + Local Costs
 
+    // Calculate Global Cost Total first (excluding VAT which is recoverable)
+    // We sum up: Total FOB (Real) + Total Freight (Real) + Total Insurance (Real) + Total Other (Real) + Total Ad Valorem (Real) + Total Local
+    const totalRealCostGlobal = totalFobClpReal + totalFreightClpReal + totalInsuranceClpReal + totalOtherImportClpReal + totalAdValorem + totalLocalCostsClp;
+    
+    // Calculate Real Factor (CLP / Source Currency)
+    const factorRealGlobal = totalFobOriginal > 0 ? totalRealCostGlobal / totalFobOriginal : 0;
+
     const calculatedItems = itemsWithFob.map(item => {
         const valueFactor = totalFobUsd > 0 ? item.fobTotalUsd / totalFobUsd : 0; // Prorate by USD value
-        const qtyFactor = totalUnits > 0 ? item.quantity / totalUnits : 0;
-
+        
         // Propagate Real Costs (prorated by value)
         const freightReal = totalFreightClpReal * valueFactor;
         const insuranceReal = totalInsuranceClpReal * valueFactor;
         const otherImportReal = totalOtherImportClpReal * valueFactor;
 
-        // Taxes are fixed/official, prorated by Qty (or Value depending on logic, user said Qty for Taxes before but usually Value is safer for AdValorem. Sticking to Qty for consistency with legacy unless asked)
-        // Actually, Customs Taxes are usually distributed by CIF Value if items have different categories, but here we treat shipment globally.
-        // Let's stick to previous logical flow: Distribute total taxes by quantity if that's what was there, OR by value if that makes more sense.
-        // The previous code did taxes by Quantity. Let's keep it to minimize friction, or switch to Value if requested.
-        // User didn't specify proration method change, only rates. Sticking to Qty for taxes to be safe.
-        const itemAdValorem = totalAdValorem * qtyFactor;
-        const itemVat = totalVat * qtyFactor;
+        // Taxes are fixed/official
+        // We now distribute Ad Valorem by VALUE to be consistent with the requested Factor logic
+        const itemAdValorem = totalAdValorem * valueFactor;
+        const itemVat = totalVat * valueFactor; // Also distribute VAT by value for consistency, though VAT is recoverable
         const itemTotalTaxes = itemAdValorem + itemVat;
 
         const localExpensesPart = totalLocalCostsClp * valueFactor;
 
-        // Real Cost Calculation
-        // Item Real FOB (CLP) + Real Freight (CLP) + Real Insurance (CLP) + Real Other (CLP) + Ad Valorem (CLP) + Local Expenses (CLP)
-        // Note: VAT is recoverable, usually excluded from "Cost" unless specified otherwise. Previous code excluded VAT from totalCostClp.
-        const totalCostClp = item.fobTotalClpReal + freightReal + insuranceReal + otherImportReal + itemAdValorem + localExpensesPart;
-        const unitCostClp = item.quantity > 0 ? totalCostClp / item.quantity : 0;
+        // Real Cost Calculation using the requested Factor logic
+        // unitCostClp = unitPriceFob * factorRealGlobal
+        // totalCostClp = fobTotalOriginal * factorRealGlobal
+        
+        let totalCostClp = 0;
+        let unitCostClp = 0;
+
+        if (totalFobOriginal > 0) {
+             totalCostClp = item.fobTotalOriginal * factorRealGlobal;
+             unitCostClp = item.unitPriceFob * factorRealGlobal;
+        } else {
+             // Fallback if FOB is 0 (unlikely but safe)
+             totalCostClp = item.fobTotalClpReal + freightReal + insuranceReal + otherImportReal + itemAdValorem + localExpensesPart;
+             unitCostClp = item.quantity > 0 ? totalCostClp / item.quantity : 0;
+        }
 
         // CIF components for display (Customs View)
         const cifTotalUsd = item.fobTotalUsd + (totalFreightUsd * valueFactor) + (totalInsuranceUsd * valueFactor) + (totalOtherImportCostsUsd * valueFactor);

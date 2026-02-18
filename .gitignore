@@ -46,3 +46,8 @@ next-build.zip
 next-build.zip.*
 zip_log.txt
 /build_temp
+/node_modules_trash
+/backup
+/database
+*.sql
+test-db.js

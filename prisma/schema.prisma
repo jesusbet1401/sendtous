@@ -164,3 +164,10 @@ enum ShipmentStatus {
   RELEASED
   DELIVERED
 }
+
+model SystemConfiguration {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

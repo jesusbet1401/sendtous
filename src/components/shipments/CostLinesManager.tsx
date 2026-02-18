@@ -7,11 +7,23 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function CostLinesManager({ shipmentId, costs }: { shipmentId: string, costs: any[] }) {
     const [isAdding, setIsAdding] = useState(false);
+    const [costToDelete, setCostToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     async function handleAdd(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -30,11 +42,23 @@ export function CostLinesManager({ shipmentId, costs }: { shipmentId: string, co
         (event.target as HTMLFormElement).reset();
     }
 
-    async function handleDelete(id: string) {
-        if (confirm('¿Eliminar gasto?')) {
-            await removeCostLine(id, shipmentId);
+    const promptDelete = (id: string) => {
+        setCostToDelete(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!costToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            await removeCostLine(costToDelete, shipmentId);
+        } catch (error) {
+            console.error('Failed to delete cost line:', error);
+        } finally {
+            setIsDeleting(false);
+            setCostToDelete(null);
         }
-    }
+    };
 
     return (
         <Card className="h-full flex flex-col">
@@ -84,7 +108,8 @@ export function CostLinesManager({ shipmentId, costs }: { shipmentId: string, co
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-6 w-6 text-slate-400 hover:text-red-500"
-                                                onClick={() => handleDelete(cost.id)}
+                                                onClick={() => promptDelete(cost.id)}
+                                                disabled={isDeleting && costToDelete === cost.id}
                                             >
                                                 <Trash2 className="h-3 w-3" />
                                             </Button>
@@ -102,6 +127,41 @@ export function CostLinesManager({ shipmentId, costs }: { shipmentId: string, co
                     </Table>
                 </div>
             </CardContent>
+
+            <AlertDialog open={!!costToDelete} onOpenChange={(open) => !open && !isDeleting && setCostToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="h-5 w-5" />
+                            Eliminar Gasto
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            ¿Estás seguro de que deseas eliminar este gasto de importación?
+                            Esto afectará el costo total del embarque.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                confirmDelete();
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Eliminando...
+                                </>
+                            ) : (
+                                'Eliminar'
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }

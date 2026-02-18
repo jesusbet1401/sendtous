@@ -11,7 +11,10 @@ import {
     FileText,
     ChevronLeft,
     ChevronDown,
+    LogOut,
+    Bot,
 } from 'lucide-react';
+import { signOutAction } from '@/app/actions/auth';
 import clsx from 'clsx';
 import { useState } from 'react';
 
@@ -41,6 +44,7 @@ const menuGroups = [
         title: 'SOPORTE',
         items: [
             { icon: Settings, label: 'Configuración', href: '/settings' },
+            { icon: Bot, label: 'Inteligencia Artificial', href: '/settings/ai' },
         ]
     }
 ];
@@ -102,20 +106,25 @@ export function Sidebar() {
                 ))}
             </nav>
 
-            {/* User / Workspace */}
-            <div className="p-4 border-t border-[#E2E8F0]">
-                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+            <div className="p-4 border-t border-[#E2E8F0] space-y-2">
+                <div className="flex items-center gap-3 p-2 rounded-lg">
                     <img
-                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jesus"
+                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"
                         alt="User"
                         className="w-9 h-9 rounded-full bg-slate-100"
                     />
                     <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-medium text-slate-700 truncate">Jesus Betancourt</p>
+                        <p className="text-sm font-medium text-slate-700 truncate">Administrador</p>
                         <p className="text-xs text-slate-500 truncate">Sendtous</p>
                     </div>
-                    <ChevronDown size={16} className="text-slate-400" />
                 </div>
+
+                <form action={signOutAction} className="w-full">
+                    <button className="w-full flex items-center gap-2 px-2 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors">
+                        <LogOut size={16} />
+                        <span>Cerrar Sesión</span>
+                    </button>
+                </form>
             </div>
         </div>
     );
